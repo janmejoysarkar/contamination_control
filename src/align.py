@@ -45,13 +45,13 @@ def get_submap(ref_img):
 if __name__=='__main__':
     SAVE= True
     project_path= os.path.abspath('..')
-    FILT_NAME= 'NB02'
-    files= sorted(glob.glob(f'/home/sarkarjj/Downloads/data/*14*/*{FILT_NAME}*'))
+    files= sorted(glob.glob(f'/home/sarkarjj/data/raw/*'))
     ref_img= sunpy.map.Map(files[0])
     ref_submap = get_submap(ref_img)
     ref_head=ref_submap.fits_header
     ref_cdel=ref_head['CDELT1']
-    flat_filename= os.path.join(project_path, f'products/flat_{ref_head['F_NAME']}')
+    FILT_NAME= ref_head['FTR_NAME']
+    flat_filename= os.path.join(project_path, f'data/processed/flat_{ref_head['F_NAME']}')
     seq = sunpy.map.Map(files, sequence=True)
     o_x, o_y, x_arry, y_arry, aln_imgs = [], [], [], [], []
     
