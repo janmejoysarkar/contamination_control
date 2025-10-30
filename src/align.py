@@ -42,16 +42,15 @@ def get_submap(ref_img):
 	ref_submap = ref_img.submap(rectangle) #bottom_left, top_right=top_right)
 	return ref_submap
 
-if __name__=='__main__':
-    SAVE= True
-    project_path= os.path.abspath('..')
-    files= sorted(glob.glob(f'/home/sarkarjj/data/raw/*')) # Filepath for full disk images
+def run(filt_name):
+    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*{filt_name}*'))) # Filepath for full disk images
+    print(files[0])
     ref_img= sunpy.map.Map(files[0]) #First frame is taken as reference
     ref_submap = get_submap(ref_img)
     ref_head=ref_submap.fits_header
     ref_cdel=ref_head['CDELT1']
     FILT_NAME= ref_head['FTR_NAME']
-    flat_filename= os.path.join(project_path, f'data/processed/flat_{ref_head['F_NAME']}')
+    flat_filename= os.path.join(project_path, f"data/processed/flat_{ref_head['F_NAME']}")
     seq = sunpy.map.Map(files, sequence=True)
     o_x, o_y, x_arry, y_arry, aln_imgs = [], [], [], [], []
     
@@ -63,19 +62,26 @@ if __name__=='__main__':
            y_arry.append(seq[0].meta.get('CRPIX2')-seq[l+1].meta.get('CRPIX2'))
     
     if FILT_NAME in ['NB03', 'NB04', 'NB08']:
-    	align_shift = calculate_match_template_shift(seq, template=ref_submap)
-    	x_arry.extend(align_shift['x'].value[1:] / ref_cdel * -1)  # avoiding the inserted image data
-    	y_arry.extend(align_shift['y'].value[1:] / ref_cdel * -1)
-    	shift_xPix = align_shift['x'].value / ref_cdel * -1
-    	shift_yPix = align_shift['y'].value / ref_cdel * -1
+        align_shift = calculate_match_template_shift(seq, template=ref_submap)
+        x_arry.extend(align_shift['x'].value[1:] / ref_cdel * -1)  # avoiding the inserted image data
+        y_arry.extend(align_shift['y'].value[1:] / ref_cdel * -1)
+        shift_xPix = align_shift['x'].value / ref_cdel * -1
+        shift_yPix = align_shift['y'].value / ref_cdel * -1
     else:
-    	x_arry=np.array(x_arry)
-    	y_arry=np.array(y_arry)
-    	shift_xPix = np.insert(x_arry,0,0)
-    	shift_yPix = np.insert(y_arry,0,0)
+        x_arry=np.array(x_arry)
+        y_arry=np.array(y_arry)
+        shift_xPix = np.insert(x_arry,0,0)
+        shift_yPix = np.insert(y_arry,0,0)
     
     aligned_maps = apply_shifts(seq, yshift=shift_yPix * u.pixel, xshift=shift_xPix * u.pixel, clip=False)
     aligned_map_arr= np.stack([m.data for m in aligned_maps], axis=0)
     med= np.median(aligned_map_arr, axis=0)
     flat= ref_img.data/med
     if SAVE: fits.writeto(flat_filename, flat,  overwrite=True)
+
+if __name__=='__main__':
+    SAVE= True
+    project_path= os.path.abspath('..')
+    filt_names=['NB01', 'NB02', 'NB03', 'NB04', 'NB05', 'NB06', 'NB07', 'NB08', 'BB01', 'BB02', 'BB03']
+    for filt_name in filt_names:
+        run(filt_name)
