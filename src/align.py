@@ -42,6 +42,19 @@ def get_submap(ref_img):
 	ref_submap = ref_img.submap(rectangle) #bottom_left, top_right=top_right)
 	return ref_submap
 
+def lighten(image_list):
+    '''
+    Lighten blend
+    image_list= List of 2D numpy arrays
+    '''
+    lighten_blend=np.zeros(np.shape(image_list[0]))
+    for image in image_list:
+        for i in range(4096):
+            for j in range(4096):
+                if image[i,j] > lighten_blend[i,j]:
+                    lighten_blend[i,j]=image[i,j]
+    return(lighten_blend)
+
 def run(filt_name):
     files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*{filt_name}*'))) # Filepath for full disk images
     print(files[0])

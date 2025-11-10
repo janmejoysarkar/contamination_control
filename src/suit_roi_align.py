@@ -46,7 +46,21 @@ def select_roi_with_mouse(sunpy_map, cmap=None, norm=None):
     submap = sunpy_map.submap(bottom_left=bottom_left, top_right=top_right)
     return submap
 
+def lighten(image_list):
+    '''
+    Lighten blend
+    image_list= List of 2D numpy arrays
+    '''
+    lighten_blend=np.zeros(np.shape(image_list[0]))
+    for image in image_list:
+        for i in range(4096):
+            for j in range(4096):
+                if image[i,j] > lighten_blend[i,j]:
+                    lighten_blend[i,j]=image[i,j]
+    return(lighten_blend)
+
 if __name__=='__main__':
+    MODE='max' #'median'
     project_path = os.path.abspath("..")
     f_bb3 = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))[5:]
     bb3 = Map(f_bb3, sequence=True)
@@ -95,8 +109,13 @@ if __name__=='__main__':
     final_seq_2 = Map(final_seq_2, sequence=True)
     ref_map=final_seq_2[0]
     aligned_map_arr= np.stack([m.data for m in final_seq_2[5:]], axis=0)
-    med= np.median(aligned_map_arr, axis=0)
-    flat= ref_map.data/med
+    if (MODE=='median'):
+        combined_image= np.median(aligned_map_arr, axis=0)
+    elif (MODE=='max'):
+        combined_image= lighten(aligned_map_arr)
+    else:
+        print("Specify image combination mode")
+    flat= ref_map.data/combined_image
 
     plt.figure()
     plt.subplot(1,3,1)
