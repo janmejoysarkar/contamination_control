@@ -20,6 +20,7 @@ from sunkit_image.coalignment import mapsequence_coalign_by_match_template as mc
 import os
 from matplotlib.widgets import RectangleSelector
 import numpy as np
+from astropy.io import fits
 
 def select_roi_with_mouse(sunpy_map, cmap=None, norm=None):
     fig = plt.figure()
@@ -46,26 +47,13 @@ def select_roi_with_mouse(sunpy_map, cmap=None, norm=None):
     submap = sunpy_map.submap(bottom_left=bottom_left, top_right=top_right)
     return submap
 
-def lighten(image_list):
-    '''
-    Lighten blend
-    image_list= List of 2D numpy arrays
-    '''
-    lighten_blend=np.zeros(np.shape(image_list[0]))
-    for image in image_list:
-        for i in range(4096):
-            for j in range(4096):
-                if image[i,j] > lighten_blend[i,j]:
-                    lighten_blend[i,j]=image[i,j]
-    return(lighten_blend)
-
 if __name__=='__main__':
-    MODE='max' #'median'
+    MODE='median'
     project_path = os.path.abspath("..")
-    f_bb3 = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))[5:]
+    f_bb3 = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))
     bb3 = Map(f_bb3, sequence=True)
 
-    ref_submap = select_roi_with_mouse(bb3[0])#, norm=ImageNormalize(stretch=LinearStretch()))
+    ref_submap = select_roi_with_mouse(bb3[0])
     nt = len(bb3)
 
     xshift_keep = np.zeros(nt) * u.pix
@@ -108,26 +96,38 @@ if __name__=='__main__':
 
     final_seq_2 = Map(final_seq_2, sequence=True)
     ref_map=final_seq_2[0]
-    aligned_map_arr= np.stack([m.data for m in final_seq_2[5:]], axis=0)
+    aligned_maps= [m.data for m in final_seq_2]
     if (MODE=='median'):
+        aligned_map_arr= np.stack(aligned_maps, axis=0)
         combined_image= np.median(aligned_map_arr, axis=0)
     elif (MODE=='max'):
-        combined_image= lighten(aligned_map_arr)
+        aligned_map_arr= np.stack(aligned_maps, axis=0)
+        combined_image= np.max(aligned_map_arr, axis=0)
     else:
         print("Specify image combination mode")
     flat= ref_map.data/combined_image
-
-    plt.figure()
-    plt.subplot(1,3,1)
-    plt.imshow(ref_map.data, origin='lower', vmin=0)
-    plt.title('Raw')
-    plt.colorbar()
-    plt.subplot(1,3,2)
-    plt.imshow(flat, origin='lower', vmin=0, vmax=1.2)
-    plt.title('Calibration frame')
-    plt.colorbar()
-    plt.subplot(1,3,3)
-    plt.imshow(ref_map.data/flat, origin='lower', vmin=0, vmax=1.5e4)
-    plt.title('Corrected map')
-    plt.colorbar()
+    corrected_img= ref_map.data/flat
+    
+    #visualize
+    VMN= 0
+    VMX= np.max(ref_map.data)
+    fig, ax= plt.subplots(1,3, sharex=True, sharey=True)
+    im0= ax[0].imshow(ref_map.data, origin='lower', vmin=VMN)
+    ax[0].set_title('Raw')
+    plt.colorbar(im0, ax=ax[0])
+    
+    im1= ax[1].imshow(flat, origin='lower', vmin=VMN, vmax=1.2)
+    ax[1].set_title('Calibration frame')
+    plt.colorbar(im1, ax=ax[1])
+    
+    im2= ax[2].imshow(corrected_img, origin='lower', vmin=VMN, vmax=VMX)
+    ax[2].set_title('Corrected map')
+    plt.colorbar(im2, ax=ax[2])
     plt.show()
+
+    #save_fits
+    savepath= os.path.join(project_path, 'data/processed/savefits.fits')
+    with fits.open(f_bb3[0]) as hdu:
+        head= hdu[0].header
+    fits.writeto(savepath, corrected_img, header= head, overwrite= True)
+    print('File saved at', savepath)
