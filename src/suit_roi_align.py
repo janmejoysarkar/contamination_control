@@ -47,29 +47,27 @@ def select_roi_with_mouse(sunpy_map, cmap=None, norm=None):
     submap = sunpy_map.submap(bottom_left=bottom_left, top_right=top_right)
     return submap
 
-if __name__=='__main__':
-    MODE='median'
-    project_path = os.path.abspath("..")
-    f_bb3 = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))
-    bb3 = Map(f_bb3, sequence=True)
-
-    ref_submap = select_roi_with_mouse(bb3[0])
-    nt = len(bb3)
-
+def align_maps(seq):
+    '''
+    Align a map sequence to the reference frame
+    
+    RETURNS:
+    Aligned sunpy map sequence
+    '''
+    # Ref submap is taken from the first frame of the sequence
+    ref_submap = select_roi_with_mouse(seq[0]) 
+    nt = len(seq)
     xshift_keep = np.zeros(nt) * u.pix
     yshift_keep = np.zeros_like(xshift_keep)
-
-    shifts = calculate_match_template_shift(bb3, template=ref_submap,)
+    shifts = calculate_match_template_shift(seq, template=ref_submap,)
     xshift_arcseconds = shifts["x"]
     yshift_arcseconds = shifts["y"]
-
-    for i, m in enumerate(bb3):
+    for i, m in enumerate(seq):
         xshift_keep[i] = xshift_arcseconds[i] / m.scale[0]
         yshift_keep[i] = yshift_arcseconds[i] / m.scale[1]
-
-    bb3 = apply_shifts(bb3, -yshift_keep, -xshift_keep, clip=True)
+    seq = apply_shifts(seq, -yshift_keep, -xshift_keep, clip=True)
     final_seq_2 = []
-    for i,j in enumerate(bb3):
+    for i,j in enumerate(seq):
         date = j.date.strftime('%H:%M:%S')
         dhobt_dt = j.meta['dhobt_dt']
         grt_dt = j.meta['grt_dt']
@@ -81,7 +79,7 @@ if __name__=='__main__':
         crtime = j.meta['crtime']
         exptime = j.meta['cmd_expt']
         meas_exptime = j.meta['meas_exp']
-        p = Map(j.data, bb3[0].meta)
+        p = Map(j.data, seq[0].meta)
         p.meta['dhobt_dt'] = dhobt_dt
         p.meta['grt_dt'] = grt_dt
         p.meta['mfgdate'] = mfgdate
@@ -93,10 +91,18 @@ if __name__=='__main__':
         p.meta['cmd_expt'] = exptime
         p.meta['meas_exp'] = meas_exptime
         final_seq_2.append(p)
-
     final_seq_2 = Map(final_seq_2, sequence=True)
+    return (final_seq_2)
+
+def generate_flat(final_seq_2, SAVE=False):
+    '''
+    Generate a flat field of contaminant spots.
+    RETURNS:
+    Flat field file. Give the option to save or not.
+    '''
     ref_map=final_seq_2[0]
     aligned_maps= [m.data for m in final_seq_2]
+
     if (MODE=='median'):
         aligned_map_arr= np.stack(aligned_maps, axis=0)
         combined_image= np.median(aligned_map_arr, axis=0)
@@ -106,9 +112,26 @@ if __name__=='__main__':
     else:
         print("Specify image combination mode")
     flat= ref_map.data/combined_image
-    corrected_img= ref_map.data/flat
+    if SAVE:
+        fits.writeto(savepath, flat, overwrite= True)
+        print('Flat file saved at', savepath)
+    return flat
+
+if __name__=='__main__':
+    MODE='median'
+    project_path = os.path.abspath("..")
+    savepath= os.path.join(project_path, "data/interim/flat_frame.fits")
+    f_seq = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))
+    seq = Map(f_seq, sequence=True)
+    aligned_sequence= align_maps(seq)
+    flat_frame= generate_flat(aligned_sequence, SAVE=True)
     
-    #visualize
+    ref_map= aligned_sequence[0]
+    corrected_map= Map(aligned_sequence[0].data/flat_frame, ref_map.meta)
+    corrected_map_ls= [Map(m.data/flat_frame, m.meta) for m in aligned_sequence]
+    corrected_map_seq= MapSequence(corrected_map_ls)
+    
+    '''
     VMN= 0
     VMX= np.max(ref_map.data)
     fig, ax= plt.subplots(1,3, sharex=True, sharey=True)
@@ -126,8 +149,9 @@ if __name__=='__main__':
     plt.show()
 
     #save_fits
-    savepath= os.path.join(project_path, 'data/processed/savefits.fits')
-    with fits.open(f_bb3[0]) as hdu:
+    save_path= os.path.join(project_path, 'data/processed/savefits.fits')
+    with fits.open(f_seq[0]) as hdu:
         head= hdu[0].header
-    fits.writeto(savepath, corrected_img, header= head, overwrite= True)
+    fits.writeto(save_path, corrected_img, header= head, overwrite= True)
     print('File saved at', savepath)
+    '''
