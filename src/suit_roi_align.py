@@ -161,7 +161,7 @@ if __name__=='__main__':
 
     project_path = os.path.abspath("..")
     savepath= os.path.join(project_path, "data/interim/flat_frame.fits")
-    f_seq = sorted(glob.glob(os.path.join(project_path,'data/raw/*')))
+    f_seq = sorted(glob.glob(os.path.join(project_path,'data/raw/*.fits')))
     seq = Map(f_seq, sequence=True)
     aligned_sequence= align_maps(seq[:10]) # Generate flat using first 10 images of sequence
     flat_frame= generate_flat(aligned_sequence, SAVE)
