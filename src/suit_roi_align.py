@@ -156,7 +156,7 @@ def visualize(map1, flatframe, map3):
 
 if __name__=='__main__':
     MODE='median' # options: 'median' or 'max'
-    PLOT= False # Plot preview?
+    PLOT= True # Plot preview?
     SAVE=True # Save o/p fits?
 
     project_path = os.path.abspath("..")
