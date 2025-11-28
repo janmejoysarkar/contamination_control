@@ -106,3 +106,11 @@ if __name__=='__main__':
         iris_map.plot(axes=ax1)
         suit_submap.plot(axes=ax2)
         plt.show()
+
+        ## Scatter plot
+        suit_data= np.ravel(suit_normalized) 
+        iris_data= np.ravel(iris_normalized)[:suit_data.shape[0]]
+        colors= np.arange(iris_data.shape[0])
+        plt.figure()
+        plt.hist2d(iris_data, suit_data, bins=100)
+        plt.show()
