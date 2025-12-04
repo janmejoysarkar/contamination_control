@@ -25,6 +25,7 @@ import glob
 import sunpy
 import matplotlib.pyplot as plt
 from astropy.io import fits
+from sunpy.map import Map, MapSequence
 
 def get_submap(ref_img):
 	"""
@@ -42,28 +43,23 @@ def get_submap(ref_img):
 	ref_submap = ref_img.submap(rectangle) #bottom_left, top_right=top_right)
 	return ref_submap
 
-def lighten(image_list):
-    '''
-    Lighten blend
-    image_list= List of 2D numpy arrays
-    '''
-    lighten_blend=np.zeros(np.shape(image_list[0]))
-    for image in image_list:
-        for i in range(4096):
-            for j in range(4096):
-                if image[i,j] > lighten_blend[i,j]:
-                    lighten_blend[i,j]=image[i,j]
-    return(lighten_blend)
-
-def run(filt_name):
-    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*{filt_name}*'))) # Filepath for full disk images
-    print(files[0])
-    ref_img= sunpy.map.Map(files[0]) #First frame is taken as reference
+def run(files, tp):
+    """
+    - Process the images to generate a flat field of 
+    the contaminant patterns.
+    - Remove the contaminant patterns from the images.
+    INPUT:
+        files: list of filepaths
+        tp: template filepath
+    OUTPUT:
+        corrected_image_map: SunPy map of the corrected data.
+        flat_field: contamination flat field.
+    """
+    ref_img= sunpy.map.Map(tp) #First frame is taken as reference
     ref_submap = get_submap(ref_img)
     ref_head=ref_submap.fits_header
     ref_cdel=ref_head['CDELT1']
     FILT_NAME= ref_head['FTR_NAME']
-    flat_filename= os.path.join(project_path, f"data/processed/flat_{ref_head['F_NAME']}")
     seq = sunpy.map.Map(files, sequence=True)
     o_x, o_y, x_arry, y_arry, aln_imgs = [], [], [], [], []
     
@@ -89,12 +85,48 @@ def run(filt_name):
     aligned_maps = apply_shifts(seq, yshift=shift_yPix * u.pixel, xshift=shift_xPix * u.pixel, clip=False)
     aligned_map_arr= np.stack([m.data for m in aligned_maps], axis=0)
     med= np.median(aligned_map_arr, axis=0)
-    flat= ref_img.data/med
-    if SAVE: fits.writeto(flat_filename, flat,  overwrite=True)
+    flat_frame= ref_img.data/med
+    corrected_img_data= ref_img.data/flat_frame
+    corrected_img_data= np.nan_to_num(corrected_img_data, nan=0.0)
+    corrected_map= Map(corrected_img_data, ref_img.meta)
+    return (corrected_map, flat_frame)
+
+def visualize(map1, flatframe, map3):
+    """
+    DESCRIPTION:
+    See a preview of the individual images.
+    INPUT:
+    - map1, map3: Sunpy Map
+    - flatframe: numpy 2D array
+    RETURNS: Visualization.
+    """
+    VMN= 0
+    VMX= 1e4
+    fig, ax= plt.subplots(1,3, sharex=True, sharey=True)
+    im0= ax[0].imshow(map1.data, origin='lower', vmin=VMN, vmax=VMX)
+    ax[0].set_title('Raw')
+    plt.colorbar(im0, ax=ax[0])
+    
+    im1= ax[1].imshow(flatframe, origin='lower', vmin=VMN, vmax=1.2)
+    ax[1].set_title('Calibration frame')
+    plt.colorbar(im1, ax=ax[1])
+    
+    im2= ax[2].imshow(map3.data, origin='lower', vmin=VMN, vmax=VMX)
+    ax[2].set_title('Corrected map')
+    plt.colorbar(im2, ax=ax[2])
+    plt.show()
 
 if __name__=='__main__':
     SAVE= True
+    PLOT=True
     project_path= os.path.abspath('..')
-    filt_names=['NB01', 'NB02', 'NB03', 'NB04', 'NB05', 'NB06', 'NB07', 'NB08', 'BB01', 'BB02', 'BB03']
-    for filt_name in filt_names:
-        run(filt_name)
+    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*.fits'))) # Filepath for full disk images
+    files=files[:11]
+    tp=files[0]
+    corrected_image_map, flat_field= run(files, tp)
+    if SAVE:
+        img_savepath= os.path.join(project_path, f'data/processed/{os.path.basename(tp)}')
+        corrected_image_map.save(img_savepath, overwrite=True)
+    if PLOT:
+        visualize(Map(tp), flat_field, corrected_image_map)
+
