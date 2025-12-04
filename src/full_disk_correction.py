@@ -117,12 +117,12 @@ def visualize(map1, flatframe, map3):
     plt.show()
 
 if __name__=='__main__':
-    SAVE= True
-    PLOT=True
+    SAVE= True # Toggle to save corrected image
+    PLOT=True # Toggle to turn off visualization
     project_path= os.path.abspath('..')
     files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*.fits'))) # Filepath for full disk images
-    files=files[:11]
-    tp=files[0]
+    files=files[:11] # Selection of file list
+    tp=files[0] # Selection of template file
     corrected_image_map, flat_field= run(files, tp)
     if SAVE:
         img_savepath= os.path.join(project_path, f'data/processed/{os.path.basename(tp)}')
