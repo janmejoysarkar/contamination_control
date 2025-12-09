@@ -160,7 +160,7 @@ if __name__=='__main__':
     SAVE=False # Save o/p fits?
 
     project_path = os.path.abspath("..")
-    savepath= os.path.join(project_path, "data/interim/flat_frame.fits")
+    savepath= os.path.join(project_path, "data/interim/roi_flat_frame.fits")
     f_seq = sorted(glob.glob(os.path.join(project_path,'data/raw/*.fits')))
     seq = Map(f_seq, sequence=True)
     aligned_sequence= align_maps(seq[:10]) # Generate flat using first 10 images of sequence
@@ -169,7 +169,7 @@ if __name__=='__main__':
     corrected_map_ls=[]
     for m in seq: #Multiprocess to be implemented here
         corrected_map= Map(m.data/flat_frame, m.meta)
-        img_savepath= os.path.join(project_path, 'data/processed/', m.meta['F_NAME'])
+        img_savepath= os.path.join(project_path, 'products/roi', m.meta['F_NAME'])
         corrected_map.save(img_savepath, overwrite=True)
         corrected_map_ls.append(corrected_map)
     if PLOT: visualize(seq[0], flat_frame, corrected_map_ls[0])    
