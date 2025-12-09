@@ -61,14 +61,12 @@ def run(files, tp):
     ref_cdel=ref_head['CDELT1']
     FILT_NAME= ref_head['FTR_NAME']
     seq = sunpy.map.Map(files, sequence=True)
-    map_arr= np.stack([m.data for m in seq], axis=0)
-    raw_med= np.median(map_arr, axis=0)
-    o_x, o_y, x_arry, y_arry, aln_imgs = [], [], [], [], []
+    x_arry, y_arry, aln_imgs = [], [], []
     
-    for l in range(len(seq) - 1):
-        o_x.append(seq[l + 1].meta.get('CRPIX1'))
-        o_y.append(seq[l + 1].meta.get('CRPIX2'))
-        if FILT_NAME not in ['NB03', 'NB04', 'NB08']:
+    if FILT_NAME not in ['NB03', 'NB04', 'NB08']:
+        map_arr= np.stack([m.data for m in seq], axis=0)
+        raw_med= np.median(map_arr, axis=0)
+        for l in range(len(seq) - 1):
            x_arry.append(seq[0].meta.get('CRPIX1')-seq[l+1].meta.get('CRPIX1'))
            y_arry.append(seq[0].meta.get('CRPIX2')-seq[l+1].meta.get('CRPIX2'))
     
