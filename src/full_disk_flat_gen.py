@@ -127,6 +127,7 @@ if __name__=='__main__':
         corrected_image_map.save(img_savepath, overwrite=True)
         flat_savepath= os.path.join(project_path, f'data/interim/flat_{os.path.basename(file)}')
         fits.writeto(flat_savepath, flat_field, overwrite=True)
+        print("Flat frame saved as", flat_savepath)
     if PLOT:
         VMN= 0
         VMX= 3e4
