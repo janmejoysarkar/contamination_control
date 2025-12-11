@@ -11,6 +11,7 @@ DESCRIPTION
 - Uses cross correlation to align first 10 images of sequence.
 - Flat field is generated based on first frame of sequence.
 - Correction will only work as long as RoI position does not change due to tracking.
+- Use for NB03 and NB04 images.
 """
 
 import matplotlib.pyplot as plt 
