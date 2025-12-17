@@ -56,11 +56,7 @@ def clean_line_channels(files, template_map):
     aligned_map_arr= np.stack([m.data for m in aligned_maps], axis=0)
     med= np.median(aligned_map_arr, axis=0)
     flat_frame= template_map.data/med
-    corrected_img_data= template_map.data/flat_frame
-    corrected_img_data= np.nan_to_num(corrected_img_data, nan=0.0)
-    corrected_map= Map(corrected_img_data, template_map.meta)
-    SAVE and savefiles(template_map.meta['F_NAME'], corrected_map)
-    return (corrected_map, flat_frame)
+    return (flat_frame)
 
 def clean_contt_channels(files):
     """
@@ -84,12 +80,16 @@ def clean_contt_channels(files):
     med= np.median(aligned_imgs, axis=0)
     med[med==0]=1
     flat_frame= raw_med/med
-    for i, m in enumerate(seq):
-        corrected_img_data= m.data/flat_frame
+    return (flat_frame)
+
+def roi_correction(roi_files,roi_flat):
+    roi_seq= Map(roi_files, sequence=True)
+    for i, m in enumerate(roi_seq):
+        corrected_img_data= m.data/roi_flat
         corrected_img_data= np.nan_to_num(corrected_img_data, nan=0.0)
         corrected_map= Map(corrected_img_data, m.meta)
-        SAVE and savefiles(m.meta['F_NAME'], corrected_map)
-    return (corrected_map, flat_frame)
+        SAVE and savefiles(m.meta['F_NAME'], corrected_map, roi_flat)
+    return corrected_map
 
 def visualize(map1, flatframe, map3):
     """
@@ -112,8 +112,8 @@ def visualize(map1, flatframe, map3):
     plt.colorbar(im2, ax=ax[2])
     plt.show()
 
-def savefiles(file, corrected_image_map, FLAT=False):
-    img_savepath= os.path.join(project_path, f'products/full_disk/{file}')
+def savefiles(file, corrected_image_map, flat_field, FLAT=False):
+    img_savepath= os.path.join(project_path, f'products/roi/{file}')
     corrected_image_map.save(img_savepath, overwrite=True)
     print("saved as", file)
     if FLAT:
@@ -126,7 +126,10 @@ if __name__=='__main__':
     PLOT= True # Toggle to turn off visualization
     LIM= 20 # Max no. of images to be used for the stack and processed
     project_path= os.path.abspath('..')
-    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*.fits'))) # Filepath for full disk images
+    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/normal_4k/*.fits'))) # Filepath for full disk images
+    roi_files= sorted(glob.glob(os.path.join(project_path, f'data/raw/normal_roi/*.fits')))
+    
+    print("Generating flat field image from")
     template_file_index= len(files)//2
     if len(files)>LIM: # Stop execution if num of files is more than LIM
         print(f'Stopping execution. \nMore than {LIM} files queued')
@@ -135,15 +138,20 @@ if __name__=='__main__':
     ftr_name= template_map.meta['FTR_NAME']
     if ftr_name not in ['NB03','NB04','NB08']:
         print(os.path.basename(files[template_file_index]))
-        corrected_image_map, flat_field= clean_contt_channels(files)
+        flat_field= clean_contt_channels(files)
     elif ftr_name in ['NB03','NB04','NB08']:  
         print(os.path.basename(files[template_file_index]))
         for file in files: # use each image as template for better alignment
             template_map=Map(file)
-            corrected_image_map, flat_field= clean_line_channels(files, template_map)
+            flat_field= clean_line_channels(files, template_map)
     else:
        print('Check file metadata. FTR_NAME mismatch')
+    
+    roi_map= Map(roi_files[0])
+    col, row= roi_map.meta['X1'], roi_map.meta['Y1']
+    s_row, s_col= roi_map.meta['NAXIS1'], roi_map.meta['NAXIS2']
+    roi_flat= flat_field [row:row+s_row, col-20:col+s_col-20]
+    roi_cleaned_map= roi_correction(roi_files, roi_flat)
     if PLOT:
-        VMN= 0
-        VMX= 1e4
-        visualize(Map(files[-1]), flat_field, corrected_image_map)
+        VMN, VMX= 0, 2.5e4
+        visualize(roi_map, roi_flat, roi_cleaned_map)
