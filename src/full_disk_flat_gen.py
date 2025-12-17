@@ -41,7 +41,7 @@ def get_submap(ref_img):
 	ref_submap = ref_img.submap(rectangle) #bottom_left, top_right=top_right)
 	return ref_submap
 
-def clean_line_channels(files):
+def clean_line_channels(files, template_map):
     """
     - To process images taken in the line channels
     NB03, NB04 and NB08
@@ -59,7 +59,7 @@ def clean_line_channels(files):
     corrected_img_data= template_map.data/flat_frame
     corrected_img_data= np.nan_to_num(corrected_img_data, nan=0.0)
     corrected_map= Map(corrected_img_data, template_map.meta)
-    SAVE and savefiles(files[i], corrected_map)
+    SAVE and savefiles(template_map.meta['F_NAME'], corrected_map)
     return (corrected_map, flat_frame)
 
 def clean_contt_channels(files):
@@ -82,12 +82,13 @@ def clean_contt_channels(files):
     aligned_maps = apply_shifts(seq, yshift= y_arry * u.pixel, xshift=x_arry * u.pixel, clip=False)
     aligned_imgs= np.stack([m.data for m in aligned_maps], axis=0)
     med= np.median(aligned_imgs, axis=0)
+    med[med==0]=1
     flat_frame= raw_med/med
     for i, m in enumerate(seq):
         corrected_img_data= m.data/flat_frame
         corrected_img_data= np.nan_to_num(corrected_img_data, nan=0.0)
         corrected_map= Map(corrected_img_data, m.meta)
-        SAVE and savefiles(files[i], corrected_map)
+        SAVE and savefiles(m.meta['F_NAME'], corrected_map)
     return (corrected_map, flat_frame)
 
 def visualize(map1, flatframe, map3):
@@ -112,8 +113,9 @@ def visualize(map1, flatframe, map3):
     plt.show()
 
 def savefiles(file, corrected_image_map, FLAT=False):
-    img_savepath= os.path.join(project_path, f'products/full_disk/{os.path.basename(file)}')
+    img_savepath= os.path.join(project_path, f'products/full_disk/{file}')
     corrected_image_map.save(img_savepath, overwrite=True)
+    print("saved as", file)
     if FLAT:
         flat_savepath= os.path.join(project_path, f'data/interim/flat_{os.path.basename(file)}')
         fits.writeto(flat_savepath, flat_field, overwrite=True)
@@ -122,7 +124,7 @@ def savefiles(file, corrected_image_map, FLAT=False):
 if __name__=='__main__':
     SAVE= True # Toggle to save corrected image
     PLOT= True # Toggle to turn off visualization
-    LIM= 20 # No. of images to be used for the stack and processed
+    LIM= 20 # Max no. of images to be used for the stack and processed
     project_path= os.path.abspath('..')
     files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*.fits'))) # Filepath for full disk images
     template_file_index= len(files)//2
@@ -136,10 +138,12 @@ if __name__=='__main__':
         corrected_image_map, flat_field= clean_contt_channels(files)
     elif ftr_name in ['NB03','NB04','NB08']:  
         print(os.path.basename(files[template_file_index]))
-        corrected_image_map, flat_field= clean_line_channels(files)
+        for file in files: # use each image as template for better alignment
+            template_map=Map(file)
+            corrected_image_map, flat_field= clean_line_channels(files, template_map)
     else:
        print('Check file metadata. FTR_NAME mismatch')
     if PLOT:
         VMN= 0
-        VMX= 3e4
+        VMX= 1e4
         visualize(Map(files[-1]), flat_field, corrected_image_map)
