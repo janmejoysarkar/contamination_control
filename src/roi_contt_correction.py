@@ -126,8 +126,8 @@ if __name__=='__main__':
     PLOT= True # Toggle to turn off visualization
     LIM= 20 # Max no. of images to be used for the stack and processed
     project_path= os.path.abspath('..')
-    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/normal_4k/*.fits'))) # Filepath for full disk images
-    roi_files= sorted(glob.glob(os.path.join(project_path, f'data/raw/normal_roi/*.fits')))
+    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/full_disk/*.fits'))) # Filepath for full disk images
+    roi_files= sorted(glob.glob(os.path.join(project_path, f'data/raw/roi/*.fits')))
     
     print("Generating flat field image from")
     template_file_index= len(files)//2

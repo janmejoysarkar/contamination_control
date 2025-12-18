@@ -126,7 +126,7 @@ if __name__=='__main__':
     PLOT= True # Toggle to turn off visualization
     LIM= 20 # Max no. of images to be used for the stack and processed
     project_path= os.path.abspath('..')
-    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/*.fits'))) # Filepath for full disk images
+    files= sorted(glob.glob(os.path.join(project_path, f'data/raw/full_disk/*.fits'))) # Filepath for full disk images
     template_file_index= len(files)//2
     if len(files)>LIM: # Stop execution if num of files is more than LIM
         print(f'Stopping execution. \nMore than {LIM} files queued')
