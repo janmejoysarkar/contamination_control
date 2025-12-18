@@ -24,16 +24,14 @@ The modules are designed to be user friendly- for implementation by the end user
 ### `roi_contt_correction.py`
 - To apply contamination correction for RoI continuum channel images. 
 - Works best for NB03 and NB04 feature rich images.
-- Requires at least 10-15 images to work best.
-- **Methodology**- Requires 10-15 4k images of the same band. Generates calibration file from 4k images. Applies correction on RoI by cutting the calibration file using `X1`, `Y1`, `NAXIS` values.
+- Requires at least 10-15 full-disk images to work best for roi correction.
+- **Methodology**: Requires 10-15 4k images of the same band. Generates calibration file from 4k images. Applies correction on RoI by cutting the calibration file using `X1`, `Y1`, `NAXIS` values.
 
 ### `roi_line_correction.py`
 - To apply contamination correction for RoI continuum channel images. 
 - Works best for NB03 and NB04 feature rich images.
 - Requires at least 10-15 images to work best.
-- Aligns images by correlating features with the reference frame.
-- Takes each image in the stack as reference, and corrects them individually.
-- Computationally intensive.
+- **Methodology**: Aligns images by correlating features with the reference frame. Takes each image in the stack as reference, and corrects them individually. Computationally intensive.
 
 ### `validation_with_iris.py`
 - Used to validate photometry with IRIS SJI images. 
@@ -53,10 +51,12 @@ The modules are designed to be user friendly- for implementation by the end user
 
 
 ## Usage/Examples
+SUIT image files are to be symlinked or placed at the specific folders based on the file type.
+
 Folder structure for data
 
-    ./data/raw/normal_4k
-    ./data/raw/normal_roi
+    ./data/raw/roi
+    ./data/raw/full_disk
 
 Folder structure for products
 
